@@ -1,4 +1,5 @@
 .env
 .venv
 mongodb.pem
+tests.yml
 __pycache__
