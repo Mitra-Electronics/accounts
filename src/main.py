@@ -7,7 +7,7 @@ app = FastAPI()
 
 conf = ConnectionConfig(
     MAIL_USERNAME = "username",
-    MAIL_PASSWORD = "**********",
+    MAIL_PASSWORD = "*********",
     MAIL_FROM = "test@email.com",
     MAIL_PORT = 587,
     MAIL_SERVER = "mail server",
