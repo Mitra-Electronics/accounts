@@ -1,6 +1,6 @@
 from .drivers.crypt import get_password_hash, verify_password, create_access_token, decode_access_token
 from .schemas import UserInsert, UserBASE, Login
-from datetime import datetime
+from datetime import datetime, timedelta
 from fastapi import HTTPException, status
 from pymongo.errors import DuplicateKeyError
 from pymongo.server_api import ServerApi
@@ -8,6 +8,7 @@ from pymongo import MongoClient
 from .drivers.envd import get_env, init
 from os.path import join
 import redis
+from random import randint
 
 r = redis.Redis(
     host='redis-10652.c292.ap-southeast-1-1.ec2.cloud.redislabs.com',
@@ -15,8 +16,9 @@ r = redis.Redis(
     password=get_env("REDIS_PASSWD"))
 
 mongodb_client = MongoClient(get_env("MONGO_DB_URL"),tls=True,tlsCertificateKeyFile=join(init(),"mongodb.pem"),server_api=ServerApi('1'))
-mongodb_db = mongodb_client["mStudents"]
+mongodb_db = mongodb_client.get_database("mStudents")
 mongodb_acc = mongodb_db["accounts"]
+otp_acc = mongodb_db["otp"]
 
 def authenticate_user(login: Login):
     user = mongodb_acc.find_one({"email":login.email})
@@ -37,18 +39,33 @@ def insert_user(user: UserInsert):
     try:
         mongodb_acc.insert_one(user_dict)
         r.set(user.handle, 1)
-        return {"success":True, "email":user.email}
+        otp = randint(100000, 999999)
+        otp_acc.insert_one({"email":user.email, "otp":get_password_hash(otp), "expire":datetime.today()+timedelta(minutes=10)})
+        return {"success":True, "email":user.email, "otp":otp}
     except DuplicateKeyError as e:
         if "handle_1" in (e:=str(e)):
             return {"success":False, "reason":"The handle is already taken"}
         if "email_1" in e:
             return {"success":False, "reason":"An account already exists with the same email"}
+        
+def verify_user(token: str, otp):
+    email = decode_access_token(token)
+    if not (a := mongodb_acc.find_one({"email":email})):
+        return {"success":False, "reason":"User does not exist"}
+    if not (a := dict(a))["activated"]:
+        o = otp_acc.find({"email":email})
+        if o:
+            o = dict(o)
+            if o["expire"] <= datetime.today()+timedelta(minutes=10):
+                if verify_password(otp, o["otp"]):
+                    mongodb_acc.update_one({"email":email, "$set":{"activated":True}})
+                    return {"success":True}
     
 def edit_user(token: str, user: UserBASE):
     email = decode_access_token(token)
     if not (a := mongodb_acc.find_one({"email":email})):
         return {"success":False, "reason":"User does not exist"}
-    if a := dict(a)["activated"]:
+    if (a := dict(a))["activated"]:
         try: 
             mongodb_acc.update_one({"email":email}, {"$set":user.dict()})
             if a["handle"] != user.handle:
@@ -66,7 +83,7 @@ def delete_user(token: str):
     email = decode_access_token(token)
     if not (a := mongodb_acc.find_one({"email":email})):
         return {"success":False, "reason":"Account not activated"}
-    if a := dict(a)["activated"]:
+    if (a := dict(a))["activated"]:
         if mongodb_acc.delete_one({"email":email}):
             r.delete(a["handle"])
             return {"success":True}

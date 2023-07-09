@@ -6,17 +6,19 @@ from fastapi_mail import ConnectionConfig, FastMail, MessageSchema, MessageType
 app = FastAPI()
 
 conf = ConnectionConfig(
-    MAIL_USERNAME = "username",
-    MAIL_PASSWORD = "*********",
-    MAIL_FROM = "test@email.com",
+    MAIL_USERNAME = "ishanmitra010@outlook.com",
+    MAIL_PASSWORD = "eczprwpgvigaibvs",
+    MAIL_FROM = "ishanmitra010@outlook.com",
     MAIL_PORT = 587,
-    MAIL_SERVER = "mail server",
-    MAIL_FROM_NAME="Desired Name",
+    MAIL_SERVER = "smtp.office365.com",
+    MAIL_FROM_NAME="Ishan Mitra",
     MAIL_STARTTLS = True,
     MAIL_SSL_TLS = False,
     USE_CREDENTIALS = True,
     VALIDATE_CERTS = True
 )
+
+fm = FastMail(conf)
 
 @app.get("/")
 def index():
@@ -33,12 +35,15 @@ def create(user: UserInsert, background_tasks: BackgroundTasks):
         message = MessageSchema(
             subject="OTP for Social account email verification",
             recipients=[[r["email"]]],
-            body=f"<h1>The OTP for Social account email verification is <b>{8}</b></h1>. <b>The OTP is valid for 10 minutes</b>",
+            body=f"<h1>The OTP for Social account email verification is <b>{r['otp']}</b></h1>. <b>The OTP is valid for 10 minutes</b>",
             subtype=MessageType.html,)
-        fm = FastMail(conf)
         background_tasks.add_task(fm.send_message,message)
         return {"success":True}
     return r
+
+@app.post("/verify")
+def verify(token: Token, otp: str):
+    return 
 
 @app.post("/login")
 def login(user: Login):
