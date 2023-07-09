@@ -27,7 +27,7 @@ def index():
 @app.get("/check")
 def check(handle: str):
     return check_handle_availability(handle)
-#T
+
 @app.post("/create")
 def create(user: UserInsert, background_tasks: BackgroundTasks):
     r = insert_user(user)

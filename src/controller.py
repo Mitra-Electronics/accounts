@@ -78,7 +78,7 @@ def edit_user(token: str, user: UserBASE):
             if "email_1" in e:
                 return {"success":False, "reason":"An account already exists with the same email"}
     return {"success":False, "reason":"Account not activated"}
-#T
+
 def delete_user(token: str):
     email = decode_access_token(token)
     if not (a := mongodb_acc.find_one({"email":email})):
