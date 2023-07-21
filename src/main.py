@@ -60,3 +60,8 @@ def edit(token: Token, user: UserBASE):
 @app.post("/delete")
 def delete(token: Token):
     return delete_user(token.token)
+
+import uvicorn
+
+if __name__ == "__main__":
+  uvicorn.run("src.main:app", host="0.0.0.0", port=8000, reload=True)
